@@ -1,110 +1,134 @@
-# 🚀 sync-service – DevOps Design & Delivery
+# sync-service — DevOps Design & Delivery
 
-## 📌 Overview
-
-This repository contains the **CI/CD pipeline design** and **cloud infrastructure architecture** for `sync-service`, a Spring Boot application integrated with MongoDB and deployed on Google Cloud Platform (GCP).
-
-The system is designed with a focus on:
-
-* **Safe and controlled deployments**
-* **Scalable and resilient infrastructure**
-* **Secure configuration and secret handling**
-* **Cost efficiency for startup environments**
+> CI/CD pipeline design and cloud infrastructure architecture for a Spring Boot application on GCP.
 
 
-## 📂 Repository Structure
+## Overview
+
+This repository documents the **CI/CD pipeline design** and **cloud infrastructure architecture** for `sync-service` — a Spring Boot application integrated with MongoDB Atlas and deployed on Google Cloud Platform (GCP).
+
+The system is built around four core principles:
+
+- **Safe, controlled deployments** — branch-based promotion with manual production gates
+- **Scalable, resilient infrastructure** — Kubernetes with horizontal auto-scaling
+- **Secure configuration management** — secrets stored outside the codebase via GCP Secret Manager
+- **Cost efficiency** — rolling deployments and managed services minimize operational overhead
+
+
+## Repository Structure
 
 ```
-.
+sync-service-devops/
 ├── README.md
 ├── jenkins/
-│   └── Jenkinsfile
+│   └── Jenkinsfile              # Pipeline definition
 ├── docs/
-│   ├── ci-cd-design.md
-│   ├── infrastructure.md
-│   └── architecture.png
+│   ├── ci-cd-design.md          # Pipeline architecture & decisions
+│   ├── infrastructure.md        # GCP infrastructure design
+│   └── architecture.png         # System diagram
+├── config/                      # Sample Spring profile configurations
+│   ├── application.yml          # Shared defaults
+│   ├── application-qa.yml       # QA overrides
+│   ├── application-staging.yml  # Staging overrides
+│   └── application-prod.yml     # Production overrides
 ├── k8s/
-│   ├── deployment.yaml
-│   ├── service.yaml
-│   └── ingress.yaml
-├── deploy.sh
-└── scripts/
-    └── rollback.sh
+│   ├── deployment.yaml          # Kubernetes Deployment spec
+│   ├── service.yaml             # Kubernetes Service spec
+│   └── ingress.yaml             # Ingress configuration
+├── scripts/
+│   └── rollback.sh              # Rollback utility
+└── deploy.sh                    # Deployment entry point
 ```
 
 
-## 🧭 How to Navigate
+## Reviewer Guide
 
-For reviewers:
+Start here and follow in order:
 
-1. 👉 Start with: **docs/ci-cd-design.md**
-2. 👉 Then read: **docs/infrastructure.md**
-3. 👉 Review: **jenkins/Jenkinsfile**
-4. 👉 Refer diagram: **docs/architecture.png**
-
-
-## 🧩 System Summary
-
-| Component  | Choice             |
-| ---------- | ------------------ |
-| Backend    | Spring Boot        |
-| CI/CD      | Jenkins            |
-| Container  | Docker             |
-| Compute    | GKE (Kubernetes)   |
-| Database   | MongoDB Atlas      |
-| Secrets    | GCP Secret Manager |
-| Monitoring | Cloud Monitoring   |
+| Step | File | Purpose |
+|------|------|---------|
+| 1 | [`docs/ci-cd-design.md`](docs/ci-cd-design.md) | Pipeline architecture and design decisions |
+| 2 | [`docs/infrastructure.md`](docs/infrastructure.md) | GCP infrastructure and component layout |
+| 3 | [`jenkins/Jenkinsfile`](jenkins/Jenkinsfile) | Concrete pipeline implementation |
+| 4 | [`docs/architecture.png`](docs/architecture.png) | Visual system diagram |
 
 
-## 🚀 Deployment Flow (High-Level)
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | Spring Boot |
+| CI/CD | Jenkins |
+| Containerisation | Docker |
+| Compute | GKE (Kubernetes) |
+| Database | MongoDB Atlas |
+| Secrets | GCP Secret Manager |
+| Monitoring | Cloud Monitoring |
+
+
+## Deployment Flow
 
 ```
-Developer → GitHub → Jenkins → Docker Build → Artifact Registry → GKE → Users
+Push to branch
+      │
+      ▼
+┌─────────────┐     ┌─────────────┐     ┌───────────────────────┐
+│   develop   │────▶│  QA (auto)  │     │                       │
+└─────────────┘     └─────────────┘     │                       │
+                                        │                       │
+┌─────────────┐     ┌──────────────┐    │  Production           │
+│   staging   │────▶│ Staging(auto)│────▶  (manual approval)   │
+└─────────────┘     └──────────────┘    │                       │
+                                        └───────────────────────┘
 ```
 
+### Branch → Environment Mapping
 
-## 🔐 Key Highlights
+| Branch | Environment | Gate |
+|--------|------------|------|
+| `develop` | QA | Automatic |
+| `staging` | Staging | Automatic |
+| `main` | Production | Manual approval required |
+
+
+## Key Design Decisions
 
 ### Deployment Safety
-
-* Branch-based environment mapping
-* Manual approval for production
-* Immutable versioned artifacts
+- Branch-based environment promotion prevents accidental releases
+- Manual approval gate on `main` protects production
+- Versioned, immutable Docker artifacts — no in-place patching
 
 ### Scalability
-
-* Kubernetes auto-scaling (HPA)
-* Load-balanced traffic handling
+- Kubernetes HPA (Horizontal Pod Autoscaler) handles traffic spikes
+- Load-balanced ingress distributes requests across replicas
 
 ### Security
+- IAM roles enforce least-privilege access across GCP services
+- All secrets managed via GCP Secret Manager — nothing hardcoded or in version control
 
-* IAM-based access control
-* Secrets managed outside codebase
-
-### Cost Optimization
-
-* Rolling deployments (no duplicate infra)
-* Managed services reduce ops overhead
+### Cost Optimisation
+- Rolling deployments eliminate the need for parallel infrastructure during releases
+- Fully managed services (MongoDB Atlas, GKE, Cloud Monitoring) reduce operational overhead
 
 
-## 🧠 Design Principles
+## Design Principles
 
-* **Immutability over patching**
-* **Automation with control gates**
-* **Environment isolation**
-* **Minimal operational complexity**
-
-
-## 🧪 Example Workflow
-
-1. Push to `develop` → Deploys to QA
-2. Merge to `staging` → Deploys to Staging
-3. Merge to `main` → Manual approval → Production
+| Principle | What it means in practice |
+|-----------|--------------------------|
+| Immutability over patching | Docker images are built once and promoted across environments unchanged |
+| Automation with control gates | Everything automated except the production promotion decision |
+| Environment isolation | QA, Staging, and Production are fully independent with no shared state |
+| Minimal operational complexity | Prefer managed services over self-hosted infrastructure |
 
 
-## 📎 Future Improvements
+## Roadmap
 
-* Infrastructure as Code (Terraform)
-* Helm-based deployments
-* Distributed tracing (OpenTelemetry)
+- [ ] Infrastructure as Code — Terraform for GCP resource provisioning
+- [ ] Helm-based Kubernetes deployments for better release management
+- [ ] Distributed tracing via OpenTelemetry
+
+
+## Contributing
+
+This repository is a design and delivery reference. For questions about the architecture or pipeline decisions, refer to [`docs/ci-cd-design.md`](docs/ci-cd-design.md) first, then open a discussion.
 
