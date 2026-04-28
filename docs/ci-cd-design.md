@@ -1,85 +1,162 @@
-# 🚀 sync-service – DevOps Design
+# 🔄 CI/CD Design – sync-service
 
-## 📌 Overview
+## 1. 📌 Objective
 
-This repository contains the **CI/CD pipeline design** and **cloud infrastructure architecture** for `sync-service`, a Spring Boot service integrated with MongoDB and deployed on Google Cloud Platform (GCP).
+Design a CI/CD pipeline that ensures:
 
-The design focuses on:
-
-* **Safe and controlled deployments**
-* **Scalability and high availability**
-* **Security and secrets management**
-* **Cost efficiency for a startup environment**
+* Fast feedback on code changes
+* Safe deployments across environments
+* Easy rollback in case of failure
 
 
-## 📂 Documentation Structure
+## 2. 🔀 Branching Strategy
 
-| File                | Description                                            |
-| ------------------- | ------------------------------------------------------ |
-| `ci-cd-design.md`   | CI/CD pipeline design, branching strategy, deployments |
-| `infrastructure.md` | GCP architecture, networking, scaling, security        |
-| `Jenkinsfile`       | Pipeline implementation                                |
-| `k8s/`              | Kubernetes manifests                                   |
-| `architecture.png`  | Visual architecture diagram                            |
+We follow a **GitFlow-lite model**:
 
-
-## 🧩 System Summary
-
-* **Backend**: Spring Boot (`sync-service`)
-* **Database**: MongoDB (managed)
-* **CI/CD**: Jenkins
-* **Compute**: GKE (Google Kubernetes Engine)
-* **Containerization**: Docker
-* **Secrets**: GCP Secret Manager
+| Branch    | Purpose             | Environment |
+| --------- | ------------------- | ----------- |
+| develop   | Integration branch  | QA          |
+| staging   | Pre-production      | Staging     |
+| main      | Production-ready    | Production  |
+| feature/* | Feature development | -           |
+| hotfix/*  | Critical fixes      | Production  |
 
 
-## 🚀 Key Highlights
+## 3. 🛡️ Preventing Accidental Production Deployments
 
-### ✅ Deployment Safety
+* `main` branch protection:
 
-* Branch-based environment mapping
-* Manual approval for production
-* Immutable artifact versioning
+  * Mandatory PR approvals
+  * Required CI checks
+* Jenkins includes:
 
-### ⚡ Scalability
-
-* Kubernetes auto-scaling (HPA)
-* Load-balanced architecture
-
-### 🔐 Security
-
-* IAM-based access control
-* Secrets managed externally (no hardcoding)
-
-### 💰 Cost Optimization
-
-* Rolling deployments (no duplicate infra)
-* Managed services to reduce ops overhead
+  * **Manual approval stage** before production deployment
+* Separate service accounts per environment
+* Deployment restricted by branch conditions
 
 
-## 🧠 Design Philosophy
+## 4. ⚙️ Pipeline Design
 
-This system is designed with the following principles:
+### Pipeline Flow
 
-* **Immutability over patching**
-* **Automation with control gates**
-* **Separation of environments**
-* **Minimal operational burden**
-
-
-## 📌 How to Navigate
-
-If you're reviewing:
-
-* Start with → `ci-cd-design.md`
-* Then → `infrastructure.md`
-* Finally → `Jenkinsfile`
+```
+Checkout → Build → Test → Analyze → Package → Containerize → Push → Deploy → Verify
+```
 
 
-## 📎 Future Enhancements
+### Stages
 
-* Canary deployments
-* Terraform-based infrastructure
-* Advanced observability (tracing)
+1. Checkout source code
+2. Build application (Maven/Gradle)
+3. Run unit tests
+4. Static code analysis
+5. Package JAR
+6. Build Docker image
+7. Push to Artifact Registry
+8. Deploy based on branch
+9. Run smoke tests
 
+
+## 5. 🔁 PR vs Merge Behavior
+
+### Pull Requests
+
+* Trigger: PR creation/update
+* Actions:
+
+  * Build
+  * Unit tests
+  * Code quality checks
+* ❌ No deployment
+
+
+### Merge Behavior
+
+| Branch  | Action                       |
+| ------- | ---------------------------- |
+| develop | Auto deploy → QA             |
+| staging | Auto deploy → Staging        |
+| main    | Manual approval → Production |
+
+
+## 6. 🔄 Rollback Strategy
+
+### Approach: Immutable Deployments
+
+* Each build produces a versioned Docker image:
+
+  * `sync-service:<build-number>`
+  * `sync-service:<commit-sha>`
+
+### Rollback Options
+
+* Re-deploy previous stable version
+* Maintain `stable` tag
+* Optional automated rollback on failure
+
+
+## 7. 🔐 Configuration Management
+
+### Strategy
+
+Use Spring profiles:
+
+```
+application.yml
+application-qa.yml
+application-staging.yml
+application-prod.yml
+```
+
+Activation:
+
+```
+SPRING_PROFILES_ACTIVE=<env>
+```
+
+
+## 8. 🔑 Secrets Management
+
+### Tool: GCP Secret Manager
+
+Secrets include:
+
+* MongoDB URI
+* API keys
+
+### Access
+
+* IAM-controlled access
+* Separate service accounts per environment
+
+
+## 9. 🚀 Deployment Strategy
+
+### Selected: Rolling Deployment
+
+### Justification
+
+| Strategy   | Result      |
+| ---------- | ----------- |
+| Recreate   | Downtime    |
+| Blue/Green | Higher cost |
+| Rolling    | Balanced    |
+
+
+## 10. ⚡ Zero Downtime Approach
+
+* Readiness & liveness probes
+* Gradual pod replacement
+* Load balancer traffic shifting
+* Graceful shutdown of old pods
+
+
+## 11. ✅ Summary
+
+This CI/CD design provides:
+
+* Controlled deployments
+* Strong safety mechanisms
+* Fast feedback loops
+* Reliable rollback capability
 

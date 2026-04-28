@@ -2,42 +2,47 @@
 
 ## 1. 📌 Objective
 
-Design a **scalable, secure, and cost-efficient infrastructure** on GCP for running the sync-service.
+Design a cloud infrastructure on GCP that is:
+
+* Scalable
+* Secure
+* Cost-efficient
+* Highly available
 
 
-## 2. 🖥️ Compute Strategy
+## 2. 🖥️ Compute Layer
 
 ### ✅ Selected: Google Kubernetes Engine (GKE)
 
 ### Why GKE?
 
-* Built-in auto-scaling (HPA)
-* Supports rolling deployments
-* Self-healing (pod restarts)
+* Auto-scaling (HPA)
+* Rolling deployments
+* Self-healing pods
 * Industry-standard orchestration
 
 
 ### Alternatives Considered
 
-| Option         | Limitation                         |
-| -------------- | ---------------------------------- |
-| Compute Engine | Manual scaling                     |
-| Cloud Run      | Less control for complex workloads |
+| Option         | Limitation                            |
+| -- | - |
+| Compute Engine | Manual scaling                        |
+| Cloud Run      | Limited control for complex workloads |
 
 
-## 3. 🗄️ Database Design
+## 3. 🗄️ Database Layer
 
-### ✅ MongoDB Atlas (Managed)
+### ✅ MongoDB Atlas
 
 ### Benefits
 
+* Fully managed
 * Automated backups
 * Built-in replication
-* Minimal operational overhead
-* Easy scaling
+* Easy scalability
 
 
-## 4. 🌐 Networking Architecture
+## 4. 🌐 Networking Design
 
 ### Components
 
@@ -54,11 +59,11 @@ Client → Load Balancer → Ingress → Service → Pods
 ```
 
 
-### Security Design
+### Security
 
-* Private cluster (no public node exposure)
+* Private cluster (no public nodes)
 * TLS termination at load balancer
-* Internal communication via VPC
+* Internal communication within VPC
 
 
 ## 5. 🔐 IAM & Security
@@ -79,18 +84,16 @@ Client → Load Balancer → Ingress → Service → Pods
 
 ## 6. 🔑 Secrets Management
 
-### Tool: GCP Secret Manager
-
-* Centralized secret storage
+* Managed via GCP Secret Manager
+* No secrets stored in codebase
 * IAM-controlled access
-* No secrets in codebase
 
 
 ## 7. 📈 Auto-Scaling
 
 ### Kubernetes HPA
 
-* Scales pods based on:
+* Scales based on:
 
   * CPU usage
   * Memory usage
@@ -98,12 +101,12 @@ Client → Load Balancer → Ingress → Service → Pods
 ### Benefits
 
 * Handles traffic spikes
-* Reduces cost during low usage
+* Optimizes cost during low load
 
 
 ## 8. 📊 Logging & Monitoring
-[O
-### Stack
+
+### Tools
 
 * Cloud Logging
 * Cloud Monitoring
@@ -116,56 +119,26 @@ Client → Load Balancer → Ingress → Service → Pods
 * Pod health
 
 
-### Optional Enhancements
+## 9. 🧱 Architecture Diagram
 
-* Prometheus + Grafana
-* Alerting policies
+Refer to:
 
-
-## 9. 🧱 Architecture Overview
-
-```
-                ┌──────────────┐
-                │   Internet   │
-                └──────┬───────┘
-                       │
-             ┌─────────▼─────────┐
-             │ GCP Load Balancer │
-             └─────────┬─────────┘
-                       │
-                ┌──────▼──────┐
-                │   Ingress   │
-                └──────┬──────┘
-                       │
-              ┌────────▼────────┐
-              │  GKE Cluster    │
-              │ (Auto-scaled)   │
-              └────────┬────────┘
-                       │
-               ┌───────▼────────┐
-               │ sync-service   │
-               │ (Spring Boot)  │
-               └───────┬────────┘
-                       │
-         ┌─────────────▼─────────────┐
-         │ MongoDB Atlas (Managed)   │
-         └───────────────────────────┘
-```
+👉 `docs/architecture.png`
 
 
 ## 10. 💰 Cost Considerations
 
-* Rolling deployments avoid duplicate infrastructure
+* Rolling deployments avoid duplicate environments
 * Managed database reduces operational overhead
 * Auto-scaling prevents over-provisioning
 
 
 ## 11. ✅ Summary
 
-This infrastructure design provides:
+This infrastructure design ensures:
 
 * High availability
 * Scalability
-* Strong security practices
+* Strong security posture
 * Cost-effective operation
 
