@@ -1,144 +1,159 @@
-# ☁️ Infrastructure Design – sync-service
+# Infrastructure Design — sync-service
 
-## 1. 📌 Objective
+> GCP cloud infrastructure designed for scalability, security, high availability, and cost efficiency.
+
+---
+
+## 1. Objective
 
 Design a cloud infrastructure on GCP that is:
 
-* Scalable
-* Secure
-* Cost-efficient
-* Highly available
+- Scalable — handles variable traffic without manual intervention
+- Secure — least-privilege access, private networking, no secrets in code
+- Cost-efficient — managed services and auto-scaling prevent over-provisioning
+- Highly available — self-healing workloads with automated failover
 
+---
 
-## 2. 🖥️ Compute Layer
+## 2. Compute Layer
 
-### ✅ Selected: Google Kubernetes Engine (GKE)
+**Selected: Google Kubernetes Engine (GKE)**
 
-### Why GKE?
+GKE was chosen as the compute platform for the following reasons:
 
-* Auto-scaling (HPA)
-* Rolling deployments
-* Self-healing pods
-* Industry-standard orchestration
+| Capability | Benefit |
+|-----------|---------|
+| Horizontal Pod Autoscaler (HPA) | Scales replicas automatically based on load |
+| Rolling deployments | Zero-downtime releases out of the box |
+| Self-healing pods | Failed containers are restarted without manual intervention |
+| Industry-standard orchestration | Broad tooling support and operational familiarity |
 
+### Alternatives considered
 
-### Alternatives Considered
+| Option | Reason not selected |
+|--------|-------------------|
+| Compute Engine | Requires manual scaling and OS-level management |
+| Cloud Run | Insufficient control for stateful or complex workload configurations |
 
-| Option         | Limitation                            |
-| -- | - |
-| Compute Engine | Manual scaling                        |
-| Cloud Run      | Limited control for complex workloads |
+---
 
+## 3. Database Layer
 
-## 3. 🗄️ Database Layer
+**Selected: MongoDB Atlas**
 
-### ✅ MongoDB Atlas
+MongoDB Atlas is used as a fully managed database service, removing the operational burden of running self-hosted MongoDB on GCP.
 
-### Benefits
+| Capability | Detail |
+|-----------|--------|
+| Managed operations | No patching, replication setup, or failover configuration required |
+| Automated backups | Point-in-time recovery with configurable retention |
+| Built-in replication | Multi-node replica sets for high availability |
+| Scalability | Vertical and horizontal scaling via Atlas controls |
 
-* Fully managed
-* Automated backups
-* Built-in replication
-* Easy scalability
+---
 
-
-## 4. 🌐 Networking Design
+## 4. Networking Design
 
 ### Components
 
-* VPC (isolated network)
-* Private GKE cluster
-* HTTP(S) Load Balancer
-* Kubernetes Ingress
+| Component | Role |
+|-----------|------|
+| VPC | Isolated private network for all GCP resources |
+| Private GKE cluster | Nodes have no public IP addresses |
+| HTTP(S) Load Balancer | Handles external traffic ingress and TLS termination |
+| Kubernetes Ingress | Routes traffic from the load balancer to the correct service |
 
-
-### Request Flow
+### Request flow
 
 ```
 Client → Load Balancer → Ingress → Service → Pods
 ```
 
+### Security posture
 
-### Security
+- Private cluster nodes are not reachable from the public internet
+- TLS is terminated at the load balancer — all external traffic is encrypted in transit
+- Pod-to-pod and service-to-service communication stays within the VPC
+- No direct database exposure outside the private network
 
-* Private cluster (no public nodes)
-* TLS termination at load balancer
-* Internal communication within VPC
+---
 
+## 5. IAM & Access Control
 
-## 5. 🔐 IAM & Security
+**Principle: least-privilege access with full environment isolation.**
 
-### Principles
+Each environment (QA, Staging, Production) has its own dedicated GCP service account. Service accounts are granted only the IAM roles required for that environment's workloads — no shared credentials across environments.
 
-* Least privilege access
-* Environment isolation
+This ensures that a compromise or misconfiguration in QA cannot affect Staging or Production.
 
-### Implementation
+---
 
-* Separate service accounts:
+## 6. Secrets Management
 
-  * QA
-  * Staging
-  * Production
+All secrets are stored in **GCP Secret Manager** and injected at runtime. Nothing sensitive is committed to the repository or baked into Docker images.
 
+Secrets managed externally:
 
-## 6. 🔑 Secrets Management
+- MongoDB Atlas connection URI
+- API keys and third-party service credentials
 
-* Managed via GCP Secret Manager
-* No secrets stored in codebase
-* IAM-controlled access
+Access is controlled via IAM — each environment's service account can only read the secrets assigned to it.
 
+---
 
-## 7. 📈 Auto-Scaling
+## 7. Auto-Scaling
 
-### Kubernetes HPA
+**Tool: Kubernetes Horizontal Pod Autoscaler (HPA)**
 
-* Scales based on:
+The HPA monitors resource metrics and adjusts replica count automatically:
 
-  * CPU usage
-  * Memory usage
+| Metric | Action |
+|--------|--------|
+| CPU usage exceeds threshold | Scale out — add more pods |
+| Memory usage exceeds threshold | Scale out — add more pods |
+| Load drops | Scale in — remove idle pods |
 
-### Benefits
+This approach handles traffic spikes without pre-provisioning capacity, and reduces cost during periods of low load.
 
-* Handles traffic spikes
-* Optimizes cost during low load
+---
 
+## 8. Logging & Monitoring
 
-## 8. 📊 Logging & Monitoring
+**Tools: Cloud Logging and Cloud Monitoring**
 
-### Tools
+| Metric | Purpose |
+|--------|---------|
+| CPU & memory usage | Capacity planning and HPA tuning |
+| Request latency | Service performance and SLA tracking |
+| Error rates | Alerting on application or infrastructure failures |
+| Pod health | Detecting crash loops or failed readiness checks |
 
-* Cloud Logging
-* Cloud Monitoring
+Logs from all pods are automatically collected by Cloud Logging. Dashboards and alerting policies are configured in Cloud Monitoring.
 
-### Metrics
+---
 
-* CPU & memory usage
-* Request latency
-* Error rates
-* Pod health
+## 9. Architecture Diagram
 
+See [`docs/architecture.png`](architecture.png) for the full system diagram showing how all components connect across environments.
 
-## 9. 🧱 Architecture Diagram
+---
 
-Refer to:
+## 10. Cost Considerations
 
-👉 `docs/architecture.png`
+| Decision | Cost impact |
+|----------|------------|
+| Rolling deployments | No duplicate infrastructure during releases — avoids the cost of Blue/Green |
+| MongoDB Atlas (managed) | Eliminates the need for dedicated DB VMs and manual ops overhead |
+| HPA auto-scaling | Pods scale down during off-peak hours — no idle capacity running 24/7 |
+| Private GKE cluster | No additional NAT gateway cost for internal service communication |
 
+---
 
-## 10. 💰 Cost Considerations
+## 11. Summary
 
-* Rolling deployments avoid duplicate environments
-* Managed database reduces operational overhead
-* Auto-scaling prevents over-provisioning
-
-
-## 11. ✅ Summary
-
-This infrastructure design ensures:
-
-* High availability
-* Scalability
-* Strong security posture
-* Cost-effective operation
-
+| Goal | How it is achieved |
+|------|--------------------|
+| High availability | GKE self-healing, Atlas replication, load-balanced ingress |
+| Scalability | HPA scales pods automatically based on CPU and memory metrics |
+| Security | Private cluster, IAM least-privilege, GCP Secret Manager, TLS at edge |
+| Cost efficiency | Rolling deploys, managed services, auto-scaling down during low load |

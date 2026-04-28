@@ -1,162 +1,176 @@
-# 🔄 CI/CD Design – sync-service
+# CI/CD Design — sync-service
 
-## 1. 📌 Objective
+> Pipeline architecture ensuring fast feedback, safe deployments, and reliable rollback across all environments.
 
-Design a CI/CD pipeline that ensures:
+---
 
-* Fast feedback on code changes
-* Safe deployments across environments
-* Easy rollback in case of failure
+## 1. Objective
 
+Design a CI/CD pipeline that guarantees:
 
-## 2. 🔀 Branching Strategy
+- Fast feedback on every code change
+- Safe, controlled deployments across environments
+- Straightforward rollback when failures occur
 
-We follow a **GitFlow-lite model**:
+---
 
-| Branch    | Purpose             | Environment |
-| --------- | ------------------- | ----------- |
-| develop   | Integration branch  | QA          |
-| staging   | Pre-production      | Staging     |
-| main      | Production-ready    | Production  |
-| feature/* | Feature development | -           |
-| hotfix/*  | Critical fixes      | Production  |
+## 2. Branching Strategy
 
+A **GitFlow-lite** model keeps the branch structure simple and predictable:
 
-## 3. 🛡️ Preventing Accidental Production Deployments
+| Branch | Purpose | Environment |
+|--------|---------|------------|
+| `develop` | Integration branch | QA |
+| `staging` | Pre-production validation | Staging |
+| `main` | Production-ready code | Production |
+| `feature/*` | Feature development | — |
+| `hotfix/*` | Critical production fixes | Production |
 
-* `main` branch protection:
+---
 
-  * Mandatory PR approvals
-  * Required CI checks
-* Jenkins includes:
+## 3. Preventing Accidental Production Deployments
 
-  * **Manual approval stage** before production deployment
-* Separate service accounts per environment
-* Deployment restricted by branch conditions
+Protection is applied at both the repository and pipeline level.
 
+**Branch protection on `main`:**
+- Mandatory PR approvals before merge
+- Required CI checks must pass
 
-## 4. ⚙️ Pipeline Design
+**Jenkins pipeline guards:**
+- Manual approval stage before any production deployment
+- Deployment steps gated by branch conditions
+- Separate GCP service accounts per environment, limiting blast radius
 
-### Pipeline Flow
+---
+
+## 4. Pipeline Design
+
+### Flow
 
 ```
 Checkout → Build → Test → Analyze → Package → Containerize → Push → Deploy → Verify
 ```
 
-
 ### Stages
 
-1. Checkout source code
-2. Build application (Maven/Gradle)
-3. Run unit tests
-4. Static code analysis
-5. Package JAR
-6. Build Docker image
-7. Push to Artifact Registry
-8. Deploy based on branch
-9. Run smoke tests
+| # | Stage | Description |
+|---|-------|-------------|
+| 1 | Checkout | Pull source code from repository |
+| 2 | Build | Compile application via Maven/Gradle |
+| 3 | Test | Run unit test suite |
+| 4 | Analyse | Static code analysis |
+| 5 | Package | Produce application JAR |
+| 6 | Containerise | Build Docker image |
+| 7 | Push | Publish image to GCP Artifact Registry |
+| 8 | Deploy | Deploy to target environment based on branch |
+| 9 | Verify | Run smoke tests against deployed service |
 
+---
 
-## 5. 🔁 PR vs Merge Behavior
+## 5. PR vs Merge Behaviour
 
-### Pull Requests
+### Pull requests
 
-* Trigger: PR creation/update
-* Actions:
+Triggered on PR creation and every subsequent push to that PR.
 
-  * Build
-  * Unit tests
-  * Code quality checks
-* ❌ No deployment
+Actions performed: build, unit tests, code quality checks.
 
+**No deployment occurs on a PR** — only validation.
 
-### Merge Behavior
+### Merge behaviour
 
-| Branch  | Action                       |
-| ------- | ---------------------------- |
-| develop | Auto deploy → QA             |
-| staging | Auto deploy → Staging        |
-| main    | Manual approval → Production |
+| Branch | Triggered action |
+|--------|----------------|
+| `develop` | Auto-deploy to QA |
+| `staging` | Auto-deploy to Staging |
+| `main` | Await manual approval → deploy to Production |
 
+---
 
-## 6. 🔄 Rollback Strategy
+## 6. Rollback Strategy
 
-### Approach: Immutable Deployments
+### Immutable deployments
 
-* Each build produces a versioned Docker image:
-
-  * `sync-service:<build-number>`
-  * `sync-service:<commit-sha>`
-
-### Rollback Options
-
-* Re-deploy previous stable version
-* Maintain `stable` tag
-* Optional automated rollback on failure
-
-
-## 7. 🔐 Configuration Management
-
-### Strategy
-
-Use Spring profiles:
+Every build produces two versioned Docker image tags:
 
 ```
-application.yml
-application-qa.yml
-application-staging.yml
-application-prod.yml
+sync-service:<build-number>
+sync-service:<commit-sha>
 ```
 
-Activation:
+This means any previous version can be redeployed at any time without rebuilding.
+
+### Rollback options
+
+- Re-deploy the last known stable image tag
+- Maintain a `stable` floating tag pointing to the last successful production release
+- Optional: automated rollback triggered on failed smoke tests post-deploy
+
+---
+
+## 7. Configuration Management
+
+Spring profiles separate environment-specific configuration:
+
+```
+application.yml           # Shared defaults
+application-qa.yml        # QA overrides
+application-staging.yml   # Staging overrides
+application-prod.yml      # Production overrides
+```
+
+The active profile is set at runtime via the environment variable:
 
 ```
 SPRING_PROFILES_ACTIVE=<env>
 ```
 
+---
 
-## 8. 🔑 Secrets Management
+## 8. Secrets Management
 
-### Tool: GCP Secret Manager
+**Tool:** GCP Secret Manager
 
-Secrets include:
+Secrets managed externally (never committed to the repository):
 
-* MongoDB URI
-* API keys
+- MongoDB URI
+- API keys and third-party credentials
 
-### Access
+**Access control:** IAM roles restrict secret access per environment. Each environment uses its own service account with only the permissions it requires.
 
-* IAM-controlled access
-* Separate service accounts per environment
+---
 
+## 9. Deployment Strategy
 
-## 9. 🚀 Deployment Strategy
+**Selected strategy: Rolling deployment**
 
-### Selected: Rolling Deployment
+| Strategy | Outcome |
+|----------|---------|
+| Recreate | Causes downtime — not acceptable |
+| Blue/Green | No downtime, but doubles infrastructure cost |
+| Rolling | Zero downtime with no extra infrastructure overhead |
 
-### Justification
+Rolling deployment was chosen as the right balance for a startup context: it eliminates downtime without the cost overhead of maintaining a parallel environment.
 
-| Strategy   | Result      |
-| ---------- | ----------- |
-| Recreate   | Downtime    |
-| Blue/Green | Higher cost |
-| Rolling    | Balanced    |
+---
 
+## 10. Zero Downtime Approach
 
-## 10. ⚡ Zero Downtime Approach
+Rolling updates are safe because of the following Kubernetes configuration:
 
-* Readiness & liveness probes
-* Gradual pod replacement
-* Load balancer traffic shifting
-* Graceful shutdown of old pods
+- **Readiness probes** — traffic is only routed to pods that pass health checks
+- **Liveness probes** — unhealthy pods are restarted automatically
+- **Gradual pod replacement** — old pods are terminated only after new pods are ready
+- **Load balancer traffic shifting** — in-flight requests are drained before pod termination
+- **Graceful shutdown** — pods handle `SIGTERM` and finish in-progress work before stopping
 
+---
 
-## 11. ✅ Summary
+## 11. Summary
 
-This CI/CD design provides:
-
-* Controlled deployments
-* Strong safety mechanisms
-* Fast feedback loops
-* Reliable rollback capability
-
+| Goal | Mechanism |
+|------|----------|
+| Controlled deployments | Branch-based promotion + manual approval on `main` |
+| Safety | PR checks, branch protection, per-environment service accounts |
+| Fast feedback | Automated build and test on every PR |
+| Reliable rollback | Immutable versioned images, `stable` tag, optional auto-rollback |
