@@ -2,7 +2,6 @@
 
 > Pipeline architecture ensuring fast feedback, safe deployments, and reliable rollback across all environments.
 
----
 
 ## 1. Objective
 
@@ -12,7 +11,6 @@ Design a CI/CD pipeline that guarantees:
 - Safe, controlled deployments across environments
 - Straightforward rollback when failures occur
 
----
 
 ## 2. Branching Strategy
 
@@ -26,7 +24,6 @@ A **GitFlow-lite** model keeps the branch structure simple and predictable:
 | `feature/*` | Feature development | — |
 | `hotfix/*` | Critical production fixes | Production |
 
----
 
 ## 3. Preventing Accidental Production Deployments
 
@@ -41,7 +38,6 @@ Protection is applied at both the repository and pipeline level.
 - Deployment steps gated by branch conditions
 - Separate GCP service accounts per environment, limiting blast radius
 
----
 
 ## 4. Pipeline Design
 
@@ -65,7 +61,6 @@ Checkout → Build → Test → Analyze → Package → Containerize → Push �
 | 8 | Deploy | Deploy to target environment based on branch |
 | 9 | Verify | Run smoke tests against deployed service |
 
----
 
 ## 5. PR vs Merge Behaviour
 
@@ -85,7 +80,6 @@ Actions performed: build, unit tests, code quality checks.
 | `staging` | Auto-deploy to Staging |
 | `main` | Await manual approval → deploy to Production |
 
----
 
 ## 6. Rollback Strategy
 
@@ -106,7 +100,6 @@ This means any previous version can be redeployed at any time without rebuilding
 - Maintain a `stable` floating tag pointing to the last successful production release
 - Optional: automated rollback triggered on failed smoke tests post-deploy
 
----
 
 ## 7. Configuration Management
 
@@ -126,7 +119,7 @@ The active profile is set at runtime via the environment variable:
 SPRING_PROFILES_ACTIVE=<env>
 ```
 
----
+
 
 ## 8. Secrets Management
 
@@ -139,7 +132,6 @@ Secrets managed externally (never committed to the repository):
 
 **Access control:** IAM roles restrict secret access per environment. Each environment uses its own service account with only the permissions it requires.
 
----
 
 ## 9. Deployment Strategy
 
@@ -153,7 +145,6 @@ Secrets managed externally (never committed to the repository):
 
 Rolling deployment was chosen as the right balance for a startup context: it eliminates downtime without the cost overhead of maintaining a parallel environment.
 
----
 
 ## 10. Zero Downtime Approach
 
@@ -165,7 +156,6 @@ Rolling updates are safe because of the following Kubernetes configuration:
 - **Load balancer traffic shifting** — in-flight requests are drained before pod termination
 - **Graceful shutdown** — pods handle `SIGTERM` and finish in-progress work before stopping
 
----
 
 ## 11. Summary
 
