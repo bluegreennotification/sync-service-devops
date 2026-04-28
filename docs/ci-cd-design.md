@@ -105,13 +105,11 @@ This means any previous version can be redeployed at any time without rebuilding
 
 Spring profiles separate environment-specific configuration. Sample config files live in the `config/` directory:
 
-```
 config/
 ├── application.yml           # Shared defaults
 ├── application-qa.yml        # QA overrides
 ├── application-staging.yml   # Staging overrides
 └── application-prod.yml      # Production overrides
-```
 
 The active profile is set at runtime via the environment variable:
 
