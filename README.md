@@ -9,13 +9,11 @@ The design focuses on:
 - Scalability with cost-awareness
 - Operational reliability (rollback, monitoring)
 
----
 
 ## 🔁 CI/CD Flow
 
 feature → qa → staging → main (production)
 
----
 
 ## 📂 Contents
 
@@ -23,7 +21,6 @@ feature → qa → staging → main (production)
 - Infrastructure design → docs/infrastructure-design.md  
 - Jenkins pipeline → jenkins/Jenkinsfile  
 
----
 
 ## 💡 Key Design Principles
 
@@ -31,3 +28,4 @@ feature → qa → staging → main (production)
 - **Immutable artifacts:** Docker images versioned per build
 - **Environment parity:** QA → Staging → Production flow
 - **Fail fast:** PR validation before merge
+
